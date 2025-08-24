@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Products</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; }
+      th { background: #f5f5f5; text-align: left; }
+      a.btn, button.btn { padding: 6px 10px; border: 1px solid #aaa; text-decoration: none; background: transparent; cursor: pointer; }
+
+      /* centered header with back on left and auth on right */
+      .header {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr; /* left | center | right */
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .header-left  { justify-self: start; }
+      .header-title { justify-self: center; margin: 0; }
+      .header-right { justify-self: end; }
+      .link-ghost   { border:1px solid #ddd; padding:6px 10px; text-decoration:none; }
+    </style>
+  </head>
+  <body>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        {% if user.is_superuser %}
+          <a class="link-ghost" href="{% url 'engine_modular:module_list' %}">← Back to Module Manager</a>
+        {% elif user.is_authenticated %}
+          <a class="link-ghost" href="{% url 'engine_modular:access_choose' %}">← Back</a>
+        {% else %}
+          <a class="link-ghost" href="#" onclick="history.back(); return false;">← Back</a>
+        {% endif %}
+      </div>
+
+      <h1 class="header-title">Products</h1>
+
+      <div class="header-right">
+        {% if user.is_authenticated %}
+          <form action="{% url 'logout' %}" method="post" style="display:inline">
+            {% csrf_token %}<button class="btn" type="submit">Logout</button>
+          </form>
+        {% else %}
+          <a class="btn" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">Login</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Top actions (permission-driven) -->
+    <p>
+      {% if perms.product_module.add_product %}
+        <a class="btn" href="{% url 'product_module:product_add' %}">Add Product</a>
+      {% endif %}
+    </p>
+
+    <!-- Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Barcode</th>
+          <th>Price</th>
+          <th>Stock</th>
+          {% if perms.product_module.change_product or perms.product_module.delete_product %}
+            <th>Action</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+          <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.barcode }}</td>
+            <td>{{ p.price }}</td>
+            <td>{{ p.stock }}</td>
+            {% if perms.product_module.change_product or perms.product_module.delete_product %}
+              <td>
+                {% if perms.product_module.change_product %}
+                  <a class="btn" href="{% url 'product_module:product_edit' p.pk %}">Edit</a>
+                {% endif %}
+                {% if perms.product_module.delete_product %}
+                  <a class="btn" href="{% url 'product_module:product_delete' p.pk %}">Delete</a>
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr>
+            {% if perms.product_module.change_product or perms.product_module.delete_product %}
+              <td colspan="5">No products yet.</td>
+            {% else %}
+              <td colspan="4">No products yet.</td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>
