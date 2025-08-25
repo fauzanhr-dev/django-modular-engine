@@ -1,38 +1,13 @@
-name: Vercel Deploy
+name: Vercel Production
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Where to deploy"
-        required: true
-        default: production
-        type: choice
-        options: [production, preview]
-      ref:
-        description: "Git ref (branch, tag, or SHA)"
-        required: true
-        default: main
-      run_migrations:
-        description: "Run Django migrations before deploy"
-        required: true
-        default: true
-        type: boolean
-
-permissions:
-  contents: read
-
-concurrency:
-  group: deploy-${{ github.ref }}   # avoid overlapping deploys for the same ref
-  cancel-in-progress: true
 
 jobs:
-  deploy:
+  deploy-production:
     runs-on: ubuntu-latest
 
-    # Map secrets -> job env so we can refer to env.* safely everywhere
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -42,9 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          # Use selected ref for manual runs, current ref for pushes
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -55,36 +27,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      # Decide deploy env (production/preview) for both push & manual
-      - name: Decide deploy environment
-        id: envpick
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "DEPLOY_ENV=${{ inputs.environment }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "DEPLOY_ENV=production" >> $GITHUB_OUTPUT
-          else
-            echo "DEPLOY_ENV=preview" >> $GITHUB_OUTPUT
-          fi
-          echo "Chosen env: $(cat $GITHUB_OUTPUT)"
-
-      - name: Run Django migrations & collectstatic
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_migrations) || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+      - name: Run Django migrations (Neon)
+        if: ${{ env.DATABASE_URL != '' }}
         run: |
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput
-
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
-      - name: Vercel pull (match environment)
-        run: vercel pull --yes --environment=${{ steps.envpick.outputs.DEPLOY_ENV }} --token="$VERCEL_TOKEN"
+      - name: Vercel pull (production)
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Deploy to Vercel
-        run: |
-          if [ "${{ steps.envpick.outputs.DEPLOY_ENV }}" = "production" ]; then
-            vercel deploy --prod --yes --token="$VERCEL_TOKEN"
-          else
-            vercel deploy --yes --token="$VERCEL_TOKEN"
-          fi
+      - name: Deploy to Vercel (production)
+        run: vercel deploy --prod --token="$VERCEL_TOKEN" --yes
