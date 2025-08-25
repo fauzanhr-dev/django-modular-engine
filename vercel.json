@@ -1,11 +1,7 @@
 {
-    "functions": {
-      "api/index.py": {
-        "runtime": "python3.11"
-      }
-    },
-    "routes": [
-      { "src": "/static/(.*)", "dest": "/staticfiles/$1" },
-      { "src": "/(.*)", "dest": "/api/index.py" }
-    ]
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    { "src": "/static/(.*)", "dest": "/staticfiles/$1" },
+    { "src": "/(.*)", "dest": "/api/index.py" }
+  ]
+}
