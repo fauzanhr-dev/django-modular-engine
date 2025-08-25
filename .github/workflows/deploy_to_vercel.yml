@@ -72,8 +72,8 @@ jobs:
       - name: Run Django migrations & collectstatic
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_migrations) || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
-          python manage.py collectstatic --noinput
           python manage.py migrate --noinput
+          python manage.py collectstatic --noinput
 
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
